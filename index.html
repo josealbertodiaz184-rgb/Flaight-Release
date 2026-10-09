@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flight Planning & Computer Flight Plan (CFP)</title>
+    <style>
+        :root {
+            --primary: #0a0e17;
+            --secondary: #1e293b;
+            --accent: #3b82f6;
+            --bg: #030712;
+            --card-bg: #111827;
+            --text: #f3f4f6;
+            --border: #374151;
+            --highlight: #60a5fa;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --gold: #f59e0b;
+            --gold-bright: #fbbf24;
+        }
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 10px;
+        }
+        .container {
+            max-width: 1550px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            border: 1px solid var(--border);
+        }
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 12px;
+            margin-bottom: 15px;
+        }
+        .brand-logo-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .logo-img {
+            width: 65px;
+            height: 65px;
+            object-fit: contain;
+            border-radius: 4px;
+            border: 1px solid var(--gold);
+            background: #000;
+        }
+        .header-title p { color: #9ca3af; margin: 2px 0 0 0; font-size: 0.75rem; }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            background: var(--secondary);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+        .tab-btn.active {
+            background: var(--accent);
+            border-color: var(--highlight);
+            color: #fff;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 15px;
+        }
+        @media(max-width: 1100px) {
+            .grid-2 { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+        .panel h3 {
+            margin-top: 0;
+            color: var(--highlight);
+            font-size: 0.85rem;
+            border-bottom: 1px dashed var(--border);
+            padding-bottom: 5px;
+            text-transform: uppercase;
+        }
+        .form-group { margin-bottom: 8px; }
+        label { display: block; font-size: 0.7rem; color: #9ca3af; margin-bottom: 2px; text-transform: uppercase; }
+        input, select, textarea {
+            width: 100%;
+            padding: 5px;
+            background: #1e293b;
+            color: #4ade80;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            box-sizing: border-box;
+            font-size: 0.8rem;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        textarea { height: 50px; resize: vertical; }
+
+        .btn-action {
+            width: 100%;
+            background: #2563eb;
+            color: white;
+            padding: 8px;
+            border: none;
+            border-radius: 3px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+        .btn-action:hover { background: #1d4ed8; }
+        .btn-success { background: #16a34a; }
+        .btn-success:hover { background: #15803d; }
+
+        .cfp-output {
+            background: #000;
+            color: #00ff66;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 0.73rem;
+            line-height: 1.35;
+            white-space: pre-wrap;
+            border: 1px solid var(--border);
+            height: 550px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            margin-top: 5px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid var(--border);
+            padding: 6px;
+            text-align: left;
+        }
+        .data-table th { background: #1e3a8a; color: #fff; }
+        .data-table tr:nth-child(even) { background: #0f172a; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-title">
+        <div class="brand-logo-container">
+            <img src="051c90c1-5ba3-4865-9540-3d17b46446ee-1_all_315.png" alt="Logo JD" class="logo-img" id="user_logo_preview" onerror="this.style.display='none'">
+            <div>
+                <p style="color: var(--gold-bright); font-size: 0.95rem; font-weight: bold; letter-spacing: 1px; margin: 0;">FLIGHT DISPATCHER • PLANIFICACIÓN SEGURA</p>
+                <p>SISTEMA OPERACIONAL DE PLANIFICACIÓN DE VUELO & NAVEGACIÓN</p>
+            </div>
+        </div>
+        <div style="text-align: right;">
+            <span style="color: var(--gold-bright); font-size: 0.8rem;" id="active_ac_label">ACTIVO: B737-300</span><br>
+            <span style="color: #60a5fa; font-size: 0.75rem;" id="utc_clock">UTC: --:--:-- | --/--/----</span>
+        </div>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab_planner')">Planificador CFP</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab_import')">Importar Flight Release</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab_aircraft')">Base de Datos Aeronaves</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab_routes')">Base de Datos Rutas</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab_nuevocalculo')">Cálculo Performance & DB</button>
+    </div>
+
+    <!-- PESTAÑA 1: PLANIFICADOR -->
+    <div id="tab_planner" class="tab-content active">
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Parámetros de Vuelo</h3>
+                <div class="form-group">
+                    <label>SELECCIONAR AERONAVE (DB):</label>
+                    <select id="sel_aircraft" onchange="onAircraftChange()"></select>
+                </div>
+                <div class="form-group">
+                    <label>SELECCIONAR RUTA PREDEFINIDA (DB):</label>
+                    <select id="sel_route" onchange="onRouteSelect()"></select>
+                </div>
+                <div class="form-group">
+                    <label>TIPO DE VUELO:</label>
+                    <select id="jp_flight_type">
+                        <option value="NAC">NACIONAL (Contingencia 18% | Reserva Final 45 min)</option>
+                        <option value="INT">INTERNACIONAL (Contingencia 10% | Reserva Final 30 min)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>NÚMERO DE VUELO:</label>
+                    <input type="text" id="jp_flight" value="RUC309">
+                </div>
+                <div class="form-group">
+                    <label>MATRÍCULA:</label>
+                    <input type="text" id="jp_tail" value="YV655T">
+                </div>
+                <div class="form-group">
+                    <label>ORIGEN (ICAO):</label>
+                    <input type="text" id="jp_origin" value="SVPR">
+                </div>
+                <div class="form-group">
+                    <label>DESTINO (ICAO):</label>
+                    <input type="text" id="jp_dest" value="SVMI">
+                </div>
+                <div class="form-group">
+                    <label>RUTA ATS / WAYPOINTS:</label>
+                    <input type="text" id="jp_route" value="GNA1 MIGED W27 SOM UW20 CBC">
+                </div>
+                <div class="form-group">
+                    <label>NIVEL DE VUELO (FL):</label>
+                    <input type="text" id="jp_fl" value="FL320">
+                </div>
+                <div class="form-group">
+                    <label>PASAJEROS (PAX):</label>
+                    <input type="number" id="jp_pax" value="120">
+                </div>
+                <div class="form-group">
+                    <label>COMBUSTIBLE CARGADO / FOB (<span id="unit_label_fob">KGS</span>):</label>
+                    <input type="number" id="jp_fob" value="8599">
+                </div>
+                <div class="form-group">
+                    <label>ALTERNO:</label>
+                    <input type="text" id="jp_altn" value="SVMG">
+                </div>
+                <div class="form-group">
+                    <label>HOLDING (<span id="unit_label_hold">KGS</span>):</label>
+                    <input type="number" id="jp_holding" value="1788">
+                </div>
+                <div class="form-group">
+                    <label>EXTRA FUEL (Cálculo Automático):</label>
+                    <input type="text" id="jp_extra" value="Calculado automáticamente" readonly style="background: #111827; color: #60a5fa;">
+                </div>
+                <button class="btn-action" type="button" onclick="generateJetPlan()">GENERAR CFP OPERACIONAL</button>
+            </div>
+
+            <div class="panel">
+                <h3>Computer Flight Plan (CFP) & Navlog</h3>
+                <div class="cfp-output" id="cfp_terminal">
+=== SISTEMA DE PLANIFICACIÓN INICIALIZADO ===
+Seleccione aeronave y ruta de la base de datos o importe un Flight Release.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA: IMPORTAR FLIGHT RELEASE -->
+    <div id="tab_import" class="tab-content">
+        <div class="panel">
+            <h3>Importar Flight Release de Texto (Formato Rutaca / Jeppesen)</h3>
+            <div class="form-group">
+                <label>Pegue el texto del Flight Release aquí:</label>
+                <textarea id="raw_release_input" style="height: 250px; font-size: 0.75rem;" placeholder="RUTACA AIRLINES FLT RELEASE COMP..."></textarea>
+            </div>
+            <button class="btn-action btn-success" type="button" onclick="parseFlightReleaseText()">PROCESAR E IMPORTAR FLIGHT RELEASE</button>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: BASE DE DATOS AERONAVES -->
+    <div id="tab_aircraft" class="tab-content">
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Registrar / Editar Aeronave</h3>
+                <form id="acForm" onsubmit="saveAircraft(event)">
+                    <div class="form-group">
+                        <label>Modelo / Identificador:</label>
+                        <input type="text" id="ac_model" placeholder="Ej: B737-300" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Matrícula:</label>
+                        <input type="text" id="ac_tail" placeholder="Ej: YV655T" required>
+                    </div>
+                    <div class="form-group">
+                        <label>DOW (Dry Operating Weight):</label>
+                        <input type="number" id="ac_dow" value="32226" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unidad de Peso:</label>
+                        <select id="ac_unit" required>
+                            <option value="KGS">Kilogramos (KGS)</option>
+                            <option value="LBS">Libras (LBS)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>MXZF (Max Zero Fuel Weight):</label>
+                        <input type="number" id="ac_mxzf" value="48307" required>
+                    </div>
+                    <div class="form-group">
+                        <label>MRW (Max Ramp Weight):</label>
+                        <input type="number" id="ac_mrw" value="61400" required>
+                    </div>
+                    <div class="form-group">
+                        <label>MTOW (Max Takeoff Weight):</label>
+                        <input type="number" id="ac_mtow" value="61234" required>
+                    </div>
+                    <div class="form-group">
+                        <label>MLOW (Max Landing Weight):</label>
+                        <input type="number" id="ac_mlow" value="51709" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Consumo Promedio Horario:</label>
+                        <input type="number" id="ac_burn" value="3000" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Velocidad Crucero Típica:</label>
+                        <input type="text" id="ac_speed" value="446 KTAS (M 0.76)" required>
+                    </div>
+                    <button type="submit" class="btn-action btn-success">Guardar Aeronave en DB</button>
+                </form>
+            </div>
+            <div class="panel">
+                <h3>Flota Registrada en el Sistema</h3>
+                <table class="data-table" id="ac_table">
+                    <thead>
+                        <tr>
+                            <th>Modelo</th>
+                            <th>Matrícula</th>
+                            <th>DOW</th>
+                            <th>Unidad</th>
+                            <th>MXZF</th>
+                            <th>MRW</th>
+                            <th>MTOW</th>
+                            <th>MLOW</th>
+                            <th>Consumo/Hr</th>
+                            <th>Velocidad</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 3: BASE DE DATOS RUTAS -->
+    <div id="tab_routes" class="tab-content">
+        <div class="grid-2">
+            <div class="panel">
+                <h3>Registrar / Editar Ruta</h3>
+                <form id="routeForm" onsubmit="saveRoute(event)">
+                    <div class="form-group">
+                        <label>Nombre de Ruta (Ej: SVPR-SVMI):</label>
+                        <input type="text" id="rt_name" placeholder="SVPR-SVMI" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Origen (ICAO):</label>
+                        <input type="text" id="rt_origin" placeholder="SVPR" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Destino (ICAO):</label>
+                        <input type="text" id="rt_dest" placeholder="SVMI" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Distancia Total (NM):</label>
+                        <input type="number" id="rt_dist" value="370" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tiempo Estimado (Minutos):</label>
+                        <input type="number" id="rt_time" value="59" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ruta ATS / Waypoints:</label>
+                        <textarea id="rt_string" required>GNA1 MIGED W27 SOM UW20 CBC</textarea>
+                    </div>
+                    <button type="submit" class="btn-action btn-success">Guardar Ruta en DB</button>
+                </form>
+            </div>
+            <div class="panel">
+                <h3>Rutas Guardadas en el Sistema</h3>
+                <table class="data-table" id="route_table">
+                    <thead>
+                        <tr>
+                            <th>Ruta</th>
+                            <th>Trayecto</th>
+                            <th>Distancia (NM)</th>
+                            <th>EET</th>
+                            <th>ATS String</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 4: MÓDULO PERFORMANCE & DB DE PISTAS/FLAPS -->
+    <div id="tab_nuevocalculo" class="tab-content">
+        <div class="grid-2">
+            <div>
+                <!-- Panel de Registro de Performance / Pista -->
+                <div class="panel">
+                    <h3>Alimentar DB: Configuración de Pista & Flaps</h3>
+                    <form id="perfDbForm" onsubmit="savePerfConfig(event)">
+                        <div class="form-group">
+                            <label>Aeropuerto / Pista (Ej: SVPR 08):</label>
+                            <input type="text" id="pdb_airport" placeholder="SVPR 08" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Longitud de Pista Manual (FT):</label>
+                            <input type="number" id="pdb_length_manual" value="6725" placeholder="Ej: 6725" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Condición de Pista:</label>
+                            <select id="pdb_condition">
+                                <option value="DRY">SECA (DRY)</option>
+                                <option value="WET">MOJADA (WET)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Flaps Permitidos (Ej: 1, 5, 15, 25):</label>
+                            <input type="text" id="pdb_flaps_allowed" value="1, 5, 15" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Flap Óptimo Recomendado:</label>
+                            <select id="pdb_optimal_flap">
+                                <option value="1">FLAPS 1 (Optimizado Pista Larga / Gradiente)</option>
+                                <option value="5">FLAPS 5 (Estándar / Salida Normal)</option>
+                                <option value="15">FLAPS 15 (Óptimo Pista Corta / Limitada)</option>
+                                <option value="25">FLAPS 25 (Máximo Rendimiento Ascenso OEI)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-action btn-success">Guardar Configuración en DB</button>
+                    </form>
+                </div>
+
+                <!-- Panel de Cálculo de V-Speeds -->
+                <div class="panel">
+                    <h3>Cálculo de V-Speeds Operacional</h3>
+                    <div class="form-group">
+                        <label>SELECCIONAR CONFIGURACIÓN DE PISTA (DB):</label>
+                        <select id="sel_perf_config" onchange="onPerfConfigSelect()"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>PESO DE DESPEGUE (TOW):</label>
+                        <input type="number" id="nc_tow" value="52575">
+                    </div>
+                    <div class="form-group">
+                        <label>FLAP SELECCIONADO PARA EL CÁLCULO:</label>
+                        <select id="nc_selected_flap">
+                            <option value="1">FLAPS 1</option>
+                            <option value="5" selected>FLAPS 5</option>
+                            <option value="15">FLAPS 15</option>
+                            <option value="25">FLAPS 25</option>
+                        </select>
+                    </div>
+                    <button class="btn-action" type="button" onclick="calcularPerformance()">EJECUTAR CÁLCULO DE V-SPEEDS</button>
+                </div>
+            </div>
+
+            <div>
+                <div class="panel">
+                    <h3>Base de Datos de Configuraciones de Pista & Flaps</h3>
+                    <table class="data-table" id="perf_db_table">
+                        <thead>
+                            <tr>
+                                <th>Pista</th>
+                                <th>Largo (FT)</th>
+                                <th>Condición</th>
+                                <th>Flaps Permitidos</th>
+                                <th>Flap Óptimo</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="panel">
+                    <h3>Resultado de Performance</h3>
+                    <div class="cfp-output" id="perf_terminal">
+=== MÓDULO DE PERFORMANCE & V-SPEEDS ===
+Seleccione configuración de pista e ingrese su TOW.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- DATOS INICIALES POR DEFECTO ---
+    const defaultAircrafts = [
+        { model: "B737-300", tail: "YV655T", dow: 32226, unit: "KGS", mxzf: 48307, mrw: 61400, mtow: 61234, mlow: 51709, burn: 3000, speed: "446 KTAS (M 0.76)" },
+        { model: "B737-200", tail: "YV663T", dow: 26500, unit: "LBS", mxzf: 38500, mrw: 52500, mtow: 52300, mlow: 49000, burn: 2400, speed: "430 KTAS (M 0.74)" }
+    ];
+
+    const defaultRoutes = [
+        { name: "SVPR-SVMI", origin: "SVPR", dest: "SVMI", dist: 370, time: 59, string: "GNA1 MIGED W27 SOM UW20 CBC" },
+        { name: "SVMI-SLVR", origin: "SVMI", dest: "SLVR", dist: 1485, time: 198, string: "SVMI UM454 TNCF_FIR SLVR" }
+    ];
+
+    const defaultPerfConfigs = [
+        { airport: "SVPR 08", length: 6725, condition: "DRY", flaps: "1, 5, 15", optimal: "5" },
+        { airport: "SVMI 09", length: 9840, condition: "DRY", flaps: "1, 5, 15", optimal: "5" }
+    ];
+
+    // --- INICIALIZACIÓN Y LOCALSTORAGE ---
+    window.onload = function() {
+        if (!localStorage.getItem('db_aircrafts')) localStorage.setItem('db_aircrafts', JSON.stringify(defaultAircrafts));
+        if (!localStorage.getItem('db_routes')) localStorage.setItem('db_routes', JSON.stringify(defaultRoutes));
+        if (!localStorage.getItem('db_perf')) localStorage.setItem('db_perf', JSON.stringify(defaultPerfConfigs));
+
+        loadDropdowns();
+        renderTables();
+        setInterval(updateClock, 1000);
+    };
+
+    function updateClock() {
+        const clockEl = document.getElementById('utc_clock');
+        if (!clockEl) return;
+        const now = new Date();
+        const utcString = now.getUTCHours().toString().padStart(2,'0') + ':' +
+                          now.getUTCMinutes().toString().padStart(2,'0') + ':' +
+                          now.getUTCSeconds().toString().padStart(2,'0');
+        const dateString = now.getUTCDate().toString().padStart(2,'0') + '/' +
+                           (now.getUTCMonth() + 1).toString().padStart(2,'0') + '/' +
+                           now.getUTCFullYear();
+        clockEl.innerText = `UTC: ${utcString} | ${dateString}`;
+    }
+
+    function switchTab(evt, tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        const targetTab = document.getElementById(tabId);
+        if (targetTab) targetTab.classList.add('active');
+        if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+    }
+
+    // --- CARGAR SELECTORES Y TABLAS ---
+    function loadDropdowns() {
+        const acs = JSON.parse(localStorage.getItem('db_aircrafts') || '[]');
+        const routes = JSON.parse(localStorage.getItem('db_routes') || '[]');
+        const perfs = JSON.parse(localStorage.getItem('db_perf') || '[]');
+
+        let selAc = document.getElementById('sel_aircraft');
+        if (selAc) {
+            selAc.innerHTML = '';
+            acs.forEach((ac, idx) => {
+                selAc.innerHTML += `<option value="${idx}">${ac.model} (${ac.tail}) - [${ac.unit}]</option>`;
+            });
+        }
+
+        let selRt = document.getElementById('sel_route');
+        if (selRt) {
+            selRt.innerHTML = '';
+            routes.forEach((rt, idx) => {
+                selRt.innerHTML += `<option value="${idx}">${rt.name} (${rt.dist} NM)</option>`;
+            });
+        }
+
+        let selPerf = document.getElementById('sel_perf_config');
+        if (selPerf) {
+            selPerf.innerHTML = '';
+            perfs.forEach((p, idx) => {
+                selPerf.innerHTML += `<option value="${idx}">${p.airport} - ${p.length}FT (${p.condition})</option>`;
+            });
+        }
+
+        onAircraftChange();
+        onRouteSelect();
+        onPerfConfigSelect();
+    }
+
+    function renderTables() {
+        const acs = JSON.parse(localStorage.getItem('db_aircrafts') || '[]');
+        let acTable = document.querySelector('#ac_table tbody');
+        if (acTable) {
+            acTable.innerHTML = '';
+            acs.forEach(ac => {
+                acTable.innerHTML += `<tr><td>${ac.model}</td><td>${ac.tail}</td><td>${Number(ac.dow).toLocaleString()}</td><td>${ac.unit}</td><td>${ac.mxzf}</td><td>${ac.mrw}</td><td>${ac.mtow}</td><td>${ac.mlow}</td><td>${ac.burn}</td><td>${ac.speed}</td></tr>`;
+            });
+        }
+
+        const routes = JSON.parse(localStorage.getItem('db_routes') || '[]');
+        let rtTable = document.querySelector('#route_table tbody');
+        if (rtTable) {
+            rtTable.innerHTML = '';
+            routes.forEach(rt => {
+                rtTable.innerHTML += `<tr><td>${rt.name}</td><td>${rt.origin} - ${rt.dest}</td><td>${rt.dist}</td><td>${rt.time} min</td><td>${rt.string}</td></tr>`;
+            });
+        }
+
+        const perfs = JSON.parse(localStorage.getItem('db_perf') || '[]');
+        let perfTable = document.querySelector('#perf_db_table tbody');
+        if (perfTable) {
+            perfTable.innerHTML = '';
+            perfs.forEach(p => {
+                perfTable.innerHTML += `<tr><td>${p.airport}</td><td>${p.length}</td><td>${p.condition}</td><td>${p.flaps}</td><td>FLAPS ${p.optimal}</td></tr>`;
+            });
+        }
+    }
+
+    function onAircraftChange() {
+        const selAc = document.getElementById('sel_aircraft');
+        if (!selAc) return;
+        const acs = JSON.parse(localStorage.getItem('db_aircrafts') || '[]');
+        const idx = selAc.value;
+        const ac = acs[idx];
+        if (ac) {
+            const activeLabel = document.getElementById('active_ac_label');
+            const unitLabel = document.getElementById('unit_label_fob');
+            const unitLabelHold = document.getElementById('unit_label_hold');
+            const tailInput = document.getElementById('jp_tail');
+            if (activeLabel) activeLabel.innerText = `ACTIVO: ${ac.model} (${ac.tail})`;
+            if (unitLabel) unitLabel.innerText = ac.unit;
+            if (unitLabelHold) unitLabelHold.innerText = ac.unit;
+            if (tailInput) tailInput.value = ac.tail;
+        }
+    }
+
+    function onRouteSelect() {
+        const selRt = document.getElementById('sel_route');
+        if (!selRt) return;
+        const routes = JSON.parse(localStorage.getItem('db_routes') || '[]');
+        const idx = selRt.value;
+        const rt = routes[idx];
+        if (rt) {
+            const originEl = document.getElementById('jp_origin');
+            const destEl = document.getElementById('jp_dest');
+            const routeEl = document.getElementById('jp_route');
+            if (originEl) originEl.value = rt.origin;
+            if (destEl) destEl.value = rt.dest;
+            if (routeEl) routeEl.value = rt.string;
+        }
+    }
+
+    function onPerfConfigSelect() {
+        const selPerf = document.getElementById('sel_perf_config');
+        if (!selPerf) return;
+        const perfs = JSON.parse(localStorage.getItem('db_perf') || '[]');
+        const idx = selPerf.value;
+        if (perfs && perfs[idx]) {
+            const p = perfs[idx];
+            const ncFlap = document.getElementById('nc_selected_flap');
+            if (ncFlap) ncFlap.value = p.optimal;
+        }
+    }
+
+    // --- GUARDAR EN DB ---
+    function saveAircraft(e) {
+        e.preventDefault();
+        const acs = JSON.parse(localStorage.getItem('db_aircrafts') || '[]');
+        acs.push({
+            model: document.getElementById('ac_model').value,
+            tail: document.getElementById('ac_tail').value,
+            dow: Number(document.getElementById('ac_dow').value),
+            unit: document.getElementById('ac_unit').value,
+            mxzf: Number(document.getElementById('ac_mxzf').value),
+            mrw: Number(document.getElementById('ac_mrw').value),
+            mtow: Number(document.getElementById('ac_mtow').value),
+            mlow: Number(document.getElementById('ac_mlow').value),
+            burn: Number(document.getElementById('ac_burn').value),
+            speed: document.getElementById('ac_speed').value
+        });
+        localStorage.setItem('db_aircrafts', JSON.stringify(acs));
+        loadDropdowns();
+        renderTables();
+        alert('Aeronave guardada con éxito.');
+    }
+
+    function saveRoute(e) {
+        e.preventDefault();
+        const routes = JSON.parse(localStorage.getItem('db_routes') || '[]');
+        routes.push({
+            name: document.getElementById('rt_name').value,
+            origin: document.getElementById('rt_origin').value,
+            dest: document.getElementById('rt_dest').value,
+            dist: Number(document.getElementById('rt_dist').value),
+            time: Number(document.getElementById('rt_time').value),
+            string: document.getElementById('rt_string').value
+        });
+        localStorage.setItem('db_routes', JSON.stringify(routes));
+        loadDropdowns();
+        renderTables();
+        alert('Ruta guardada con éxito.');
+    }
+
+    function savePerfConfig(e) {
+        e.preventDefault();
+        const perfs = JSON.parse(localStorage.getItem('db_perf') || '[]');
+        perfs.push({
+            airport: document.getElementById('pdb_airport').value,
+            length: Number(document.getElementById('pdb_length_manual').value),
+            condition: document.getElementById('pdb_condition').value,
+            flaps: document.getElementById('pdb_flaps_allowed').value,
+            optimal: document.getElementById('pdb_optimal_flap').value
+        });
+        localStorage.setItem('db_perf', JSON.stringify(perfs));
+        loadDropdowns();
+        renderTables();
+        alert('Configuración de pista guardada con éxito.');
+    }
+
+    // --- PARSER AUTOMÁTICO DE FLIGHT RELEASE TIPO JEPPESEN / RUTACA ---
+    function parseFlightReleaseText() {
+        const text = document.getElementById('raw_release_input').value;
+        if (!text || text.trim() === '') {
+            alert('Por favor pegue un bloque de texto de Flight Release válido.');
+            return;
+        }
+
+        const fltMatch = text.match(/\b([A-Z]{3}[0-9]{2,4})\b/);
+        const pairMatch = text.match(/([A-Z]{4})\/[A-Z0-9]+\s+TO\s+([A-Z]{4})\/[A-Z0-9]+/i);
+        const tailMatch = text.match(/\b(YV[0-9]{3,4}[T]?)\b/i);
+        const altMatch = text.match(/ALT-1\(([^)]+)\)/i);
+        const holdMatch = text.match(/HOLD-ALT\s+([0-9]{4,6})\s+([0-9]{4})/i);
+        const fobMatch = text.match(/TOTAL FOB\s+([0-9]{4,6})\s+([0-9]{4})/i);
+        const routeMatch = text.match(/ROUTE:\s*([^\n]+(?:\n\s+[^\n]+)?)/i);
+
+        if (fltMatch) document.getElementById('jp_flight').value = fltMatch[1];
+        if (pairMatch) {
+            document.getElementById('jp_origin').value = pairMatch[1];
+            document.getElementById('jp_dest').value = pairMatch[2];
+        }
+        if (tailMatch) document.getElementById('jp_tail').value = tailMatch[1];
+        if (altMatch) document.getElementById('jp_altn').value = altMatch[1];
+        if (holdMatch) document.getElementById('jp_holding').value = parseInt(holdMatch[1], 10);
+        if (fobMatch) document.getElementById('jp_fob').value = parseInt(fobMatch[1], 10);
+        if (routeMatch) {
+            let cleanRoute = routeMatch[1].replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
+            document.getElementById('jp_route').value = cleanRoute;
+        }
+
+        alert('Flight Release analizado e importado con éxito en el Planificador.');
+        switchTab(null, 'tab_planner');
+        generateJetPlan();
+    }
+
+    // --- GENERADOR DE CFP ---
+    function generateJetPlan() {
+        const acs = JSON.parse(localStorage.getItem('db_aircrafts') || '[]');
+        const routes = JSON.parse(localStorage.getItem('db_routes') || '[]');
+        
+        const acIdx = document.getElementById('sel_aircraft').value;
+        const rtIdx = document.getElementById('sel_route').value;
+        const ac = acs[acIdx];
+        const rt = routes[rtIdx];
+
+        if (!ac || !rt) {
+            alert('Seleccione una aeronave y ruta válidas.');
+            return;
+        }
+        
+        const flight = document.getElementById('jp_flight').value;
+        const tail = document.getElementById('jp_tail').value;
+        const fl = document.getElementById('jp_fl').value;
+        const pax = document.getElementById('jp_pax').value;
+        const fob = Number(document.getElementById('jp_fob').value);
+        const altn = document.getElementById('jp_altn').value;
+        const holding = Number(document.getElementById('jp_holding').value);
+        const flightType = document.getElementById('jp_flight_type').value;
+
+        const tripTimeHours = rt.time / 60;
+        const tripFuel = Math.round(tripTimeHours * ac.burn);
+        
+        const contingencyFactor = (flightType === 'NAC') ? 0.18 : 0.10;
+        const contingencyFuel = Math.round(tripFuel * contingencyFactor);
+        const contingencyTimeMinutes = Math.round(tripTimeHours * contingencyFactor * 60);
+
+        const altnFuel = Math.round(ac.burn * (45 / 60));
+        const finalReserveMinutes = (flightType === 'NAC') ? 45 : 30;
+        const finalReserveFuel = Math.round(ac.burn * (finalReserveMinutes / 60));
+
+        const minTakeoffFuel = tripFuel + contingencyFuel + altnFuel + finalReserveFuel + holding;
+        const extraFuel = Math.max(0, fob - minTakeoffFuel);
+        document.getElementById('jp_extra').value = extraFuel + " " + ac.unit;
+
+        const totalMinutesEndurance = Math.round((fob / ac.burn) * 60);
+        const endHours = Math.floor(totalMinutesEndurance / 60);
+        const endMins = totalMinutesEndurance % 60;
+
+        const terminal = document.getElementById('cfp_terminal');
+        if (terminal) {
+            terminal.innerText = `
+====================================================================
+                        COMPUTER FLIGHT PLAN
+====================================================================
+FLIGHT: ${flight}     A/C: ${ac.model} (${tail})     UNIT: ${ac.unit}
+DOW   : ${ac.dow.toLocaleString()} ${ac.unit}
+ROUTE : ${document.getElementById('jp_origin').value} / ${document.getElementById('jp_dest').value}                   LEVEL: ${fl}
+PAX   : ${pax}          DIST: ${rt.dist} NM         EET: ${Math.floor(rt.time/60)}H ${rt.time%60}M
+--------------------------------------------------------------------
+FUEL PLANNING & POLICY SUMMARY (${flightType === 'NAC' ? 'NACIONAL - 45m RES / 18% CONT' : 'INTERNACIONAL - 30m RES / 10% CONT'}):
+  ------------------------------------------------------------------
+  COMPONENTE           | COMBUSTIBLE (${ac.unit}) | TIEMPO ESTIMADO
+  ------------------------------------------------------------------
+  TRIP FUEL            | ${tripFuel.toLocaleString().padStart(12)} | ${Math.floor(rt.time/60)}H ${(rt.time%60).toString().padStart(2,'0')}M
+  CONTINGENCY (${Math.round(contingencyFactor*100)}%)    | ${contingencyFuel.toLocaleString().padStart(12)} | ${Math.floor(contingencyTimeMinutes/60)}H ${(contingencyTimeMinutes%60).toString().padStart(2,'0')}M
+  ALTERNATE (${altn})    | ${altnFuel.toLocaleString().padStart(12)} | 0H 45M
+  FINAL RESERVE        | ${finalReserveFuel.toLocaleString().padStart(12)} | 0H ${finalReserveMinutes}M
+  HOLDING              | ${holding.toLocaleString().padStart(12)} | --:--
+  EXTRA FUEL (Auto)    | ${extraFuel.toLocaleString().padStart(12)} | --:--
+  ------------------------------------------------------------------
+  MIN TAKEOFF FUEL     | ${minTakeoffFuel.toLocaleString().padStart(12)} | --:--
+  RAMP FUEL (FOB)      | ${fob.toLocaleString().padStart(12)} | --:--
+  AUTONOMÍA TOTAL (EOB)| ${fob.toLocaleString().padStart(12)} | ${endHours}H ${(endMins).toString().padStart(2,'0')}M
+  EST. LANDING FUEL    | ${(fob - tripFuel).toLocaleString().padStart(12)} | --:--
+====================================================================
+ATS ROUTE STRING:
+${document.getElementById('jp_route').value}
+====================================================================
+STATUS: PLANIFICACIÓN Y POLÍTICAS DE COMBUSTIBLE VALIDADAS CON ÉXITO.
+            `;
+        }
+    }
+
+    // --- CÁLCULO DE PERFORMANCE & V-SPEEDS ---
+    function calcularPerformance() {
+        const tow = Number(document.getElementById('nc_tow').value);
+        const flap = Number(document.getElementById('nc_selected_flap').value);
+        const perfs = JSON.parse(localStorage.getItem('db_perf') || '[]');
+        const perfIdx = document.getElementById('sel_perf_config').value;
+        const selectedPerf = perfs[perfIdx];
+
+        if (!selectedPerf) {
+            alert('Seleccione una configuración de pista válida.');
+            return;
+        }
+
+        const allowedFlaps = selectedPerf.flaps.split(',').map(f => Number(f.trim()));
+        let flapWarning = "";
+        if (!allowedFlaps.includes(flap)) {
+            flapWarning = `\n[AVISO]: FLAPS ${flap} NO figura entre los recomendados para ${selectedPerf.airport} (${selectedPerf.flaps}). Verifique limitaciones.`;
+        }
+        
+        let baseV1 = 115 + Math.round((tow - 40000) / 1800) - (flap * 1.2);
+        let baseVR = baseV1 + 5;
+        let baseV2 = baseVR + 8;
+
+        if (selectedPerf.condition === 'WET') {
+            baseV1 -= 2; 
+        }
+
+        const terminal = document.getElementById('perf_terminal');
+        if (terminal) {
+            terminal.innerText = `
+=== RESULTADO DE PERFORMANCE & V-SPEEDS ===
+PISTA SELECCIONADA    : ${selectedPerf.airport} (${selectedPerf.length} FT, ${selectedPerf.condition})
+PESO DE DESPEGUE (TOW): ${tow.toLocaleString()} LBS / KGS
+CONFIGURACIÓN FLAPS   : FLAPS ${flap} (Óptimo recomendado: FLAPS ${selectedPerf.optimal})
+------------------------------------------
+V1 (Velocidad de Decisión) : ${Math.round(baseV1)} KTS
+VR (Velocidad de Rotación) : ${Math.round(baseVR)} KTS
+V2 (Velocidad de Despegue) : ${Math.round(baseV2)} KTS
+------------------------------------------${flapWarning}
+ESTADO: CÁLCULO COMPLETADO CON ÉXITO.
+            `;
+        }
+    }
+</script>
+</body>
+</html>
